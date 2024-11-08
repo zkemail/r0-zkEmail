@@ -1,0 +1,18 @@
+[package]
+name = "dkim_verify"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+cfdkim = { git = "https://github.com/risc0-labs/dkim", default-features = false, features = []  }
+mailparse = "0.14.0"
+risc0-zkvm = { version = "1.1.2", default-features = false, features = ['std'] }
+serde = { version = "1.0.214", features = ["derive"] }
+sha2 = "0.10.6"
+slog = "2.7.0"
+rsa = "0.9"
+
+[patch.crates-io]
+sha2 = { git = "https://github.com/risc0/RustCrypto-hashes", tag = "sha2-v0.10.6-risczero.0" }
