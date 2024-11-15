@@ -17,3 +17,4 @@ slog = "2.7.0"
 anyhow = "1.0.93"
 log = "0.4.22"
 postcard = { version = "1.0", features = ["alloc"] }
+zkemail-core = { path = "../core" }

@@ -1,24 +1,9 @@
 use cfdkim::{verify_email_with_key, DkimPublicKey};
 use mailparse::parse_mail;
 use risc0_zkvm::guest::env;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use slog::{o, Discard, Logger};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Email {
-    from_domain: String,
-    raw_email: Vec<u8>,
-    public_key_type: String,
-    public_key: Vec<u8>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct DKIMOutput {
-    from_domain_hash: Vec<u8>,
-    public_key_hash: Vec<u8>,
-    verified: bool,
-}
+use zkemail_core::{DKIMOutput, Email};
 
 fn main() {
     let input: Vec<u8> = env::read_frame();
