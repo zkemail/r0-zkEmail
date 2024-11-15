@@ -14,3 +14,4 @@ target/
 *.pdb
 
 testdata/**
+/profile.pb

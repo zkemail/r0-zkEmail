@@ -12,6 +12,7 @@ use slog::{o, Discard, Logger};
 use std::{env, fs::File, io::Read, path::PathBuf};
 use trust_dns_resolver::TokioAsyncResolver;
 
+// TODO remove duplication
 #[derive(Debug, Serialize, Deserialize)]
 struct Email {
     from_domain: String,
@@ -130,9 +131,9 @@ fn read_email_file(path: &PathBuf) -> Result<String> {
 fn generate_and_verify_proof(prover: &dyn Prover, email: Email) -> Result<()> {
     debug!("Starting ZK proof generation");
 
+    let input = postcard::to_allocvec(&email).unwrap();
     let env = ExecutorEnv::builder()
-        .write(&email)
-        .map_err(|e| anyhow!("Failed to build executor environment: {}", e))?
+        .write_frame(&input)
         .build()
         .map_err(|e| anyhow!("Failed to build environment: {}", e))?;
 

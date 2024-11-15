@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 methods = { path = "../methods" }
 # risc0-zkvm = { git = "https://github.com/risc0/risc0", rev = "775e8be3294a300b7eeff23474d207bfb571c42b" }
-risc0-zkvm = { path = "../../risc0/risc0/risc0/zkvm" }
+risc0-zkvm = { path = "../../../risc0/risc0/risc0/zkvm", features = ["unstable"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = "1.0"
 cfdkim = { git = "https://github.com/risc0-labs/dkim" } 
@@ -16,3 +16,4 @@ trust-dns-resolver = "0.23.2"
 slog = "2.7.0"
 anyhow = "1.0.93"
 log = "0.4.22"
+postcard = { version = "1.0", features = ["alloc"] }

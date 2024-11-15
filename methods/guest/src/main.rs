@@ -21,7 +21,8 @@ struct DKIMOutput {
 }
 
 fn main() {
-    let input: Email = env::read();
+    let input: Vec<u8> = env::read_frame();
+    let input: Email = postcard::from_bytes(&input).unwrap();
 
     let logger = Logger::root(Discard, o!());
 
