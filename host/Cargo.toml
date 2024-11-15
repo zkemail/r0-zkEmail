@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 methods = { path = "../methods" }
-risc0-zkvm = { version = "1.1.2" }
+# risc0-zkvm = { git = "https://github.com/risc0/risc0", rev = "775e8be3294a300b7eeff23474d207bfb571c42b" }
+risc0-zkvm = { path = "../../risc0/risc0/risc0/zkvm" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = "1.0"
 cfdkim = { git = "https://github.com/risc0-labs/dkim" } 
