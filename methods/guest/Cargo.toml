@@ -16,11 +16,10 @@ risc0-zkvm = { version = "1.2.0", default-features = false, features = [
 serde = { version = "1.0.214", features = ["derive"] }
 sha2 = "0.10.6"
 slog = "2.7.0"
-rsa = "0.9"
+rsa = "=0.9.6"
 postcard = "1.0"
 zkemail-core = { path = "../../core" }
 
 [patch.crates-io]
 sha2 = { git = "https://github.com/risc0/RustCrypto-hashes", tag = "sha2-v0.10.6-risczero.0" }
-rsa = { git = "https://www.github.com/risc0/RustCrypto-RSA.git", rev = "b483a8054187e04188048e6a08ea98ec1f83ce9d" }
-# rsa = { path = "../../../../risc0/RustCrypto-RSA" }
+rsa = { git = "https://www.github.com/risc0/RustCrypto-RSA.git", tag = "v0.9.6-risczero.0" }
