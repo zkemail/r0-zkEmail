@@ -9,8 +9,7 @@ edition = "2021"
 cfdkim = { git = "https://github.com/risc0-labs/dkim", default-features = false, features = [
 ] }
 mailparse = "0.14.0"
-# TODO update this from git dep when released
-risc0-zkvm = { version = "1.2.1-rc.0", default-features = false, features = [
+risc0-zkvm = { version = "1.2.0", default-features = false, features = [
 	"std",
 	"unstable",
 ] }
