@@ -7,25 +7,10 @@ use log::{debug, error, info, warn};
 use mailparse::MailHeaderMap;
 use methods::{DKIM_VERIFY_ELF, DKIM_VERIFY_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
-use serde::{Deserialize, Serialize};
 use slog::{o, Discard, Logger};
+use zkemail_core::{DKIMOutput, Email};
 use std::{env, fs::File, io::Read, path::PathBuf};
 use trust_dns_resolver::TokioAsyncResolver;
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Email {
-    from_domain: String,
-    raw_email: Vec<u8>,
-    public_key_type: String,
-    public_key: Vec<u8>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct DKIMOutput {
-    from_domain_hash: Vec<u8>,
-    public_key_hash: Vec<u8>,
-    verified: bool,
-}
 
 async fn verify_email(from_domain: &str, email_path: &PathBuf) -> Result<()> {
     let logger = Logger::root(Discard, o!());
@@ -130,9 +115,9 @@ fn read_email_file(path: &PathBuf) -> Result<String> {
 fn generate_and_verify_proof(prover: &dyn Prover, email: Email) -> Result<()> {
     debug!("Starting ZK proof generation");
 
+    let input = postcard::to_allocvec(&email).unwrap();
     let env = ExecutorEnv::builder()
-        .write(&email)
-        .map_err(|e| anyhow!("Failed to build executor environment: {}", e))?
+        .write_frame(&input)
         .build()
         .map_err(|e| anyhow!("Failed to build environment: {}", e))?;
 
