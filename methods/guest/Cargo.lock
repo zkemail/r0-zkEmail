@@ -288,9 +288,9 @@ dependencies = [
 
 [[package]]
 name = "bytemuck"
-version = "1.19.0"
+version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8334215b81e418a0a7bdb8ef0849474f40bb10c8b71f1c4ed315cff49f32494d"
+checksum = "8b37c88a63ffd85d15b406896cc343916d7cf57838a847b3a6f2ca5d39a5695a"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -1112,9 +1112,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-binfmt"
-version = "1.2.0-rc.1"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b955226bf6eb5c253033d53b1df0e1dcde70a6fcb99b2a5675af3bd382bcc761"
+checksum = "c1231aa7a27aaef84df4b3aef295aba08139355e617a4c69a1a91aafec8e2004"
 dependencies = [
  "anyhow",
  "borsh",
@@ -1126,10 +1126,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "risc0-circuit-recursion"
-version = "1.2.0-rc.1"
+name = "risc0-circuit-keccak"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd7691a27b9f1f605c9c456cb7f9e5136e2fe52d9d3a59dd96f12c28ef47e358"
+checksum = "ce0c34d988c3845bc42dd13b4d18a1bf43697317708b02e3ed4d699e7e7ae8aa"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "paste",
+ "risc0-binfmt",
+ "risc0-circuit-recursion",
+ "risc0-core",
+ "risc0-zkp",
+ "tracing",
+]
+
+[[package]]
+name = "risc0-circuit-recursion"
+version = "1.2.1-rc.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33196c81e550572c14036174e9874423cd23000844a15a20883c3007f9cdff10"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -1142,9 +1158,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-circuit-rv32im"
-version = "1.2.0-rc.1"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cbc12e1239b0140c6123f0e3f558a6a27260d09840c986e671b4f26afc73109"
+checksum = "15fb77cd87d645eaba73da52680f9f5c65c438c5f9204e16c48b3092215bd889"
 dependencies = [
  "anyhow",
  "metal",
@@ -1158,9 +1174,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-core"
-version = "1.2.0-rc.1"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2532188911aad4c2302029f8df217137881fec213c71a8776581ba6f2d6bfbbe"
+checksum = "05c36f75b1e02618f5f726436e5c4d82fba3f625630806b980df7b7de5fc2465"
 dependencies = [
  "bytemuck",
  "rand_core",
@@ -1168,9 +1184,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-groth16"
-version = "1.2.0-rc.1"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b0a96017f756c512d7d7409a46a15f12fe98b90a3f56d117d3e4148bf28a891"
+checksum = "a9f508bb70dc5cf391952a7ce1c49aa9934d4a9ffc6d3b396f5c334b1569e71a"
 dependencies = [
  "anyhow",
  "ark-bn254",
@@ -1189,9 +1205,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-zkp"
-version = "1.2.0-rc.1"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3fb399c51a971357aa83826d8b3476a8730b38a7f061a1fd1fbde61ad8062c1"
+checksum = "94e0898aaf09eb31debee1a9438c47d9e47044d7cdcd78adc4e6eddcea20707a"
 dependencies = [
  "anyhow",
  "blake2",
@@ -1213,9 +1229,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-zkvm"
-version = "1.2.0-rc.1"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39d05fc65302f675d6211aa34be0d750ae4bfc4c93982b9f60748f15dc91478f"
+checksum = "8052a9c61c9ee91643a0bc4090a70224ed0ea79084aea24be9fe05171e2f2dbd"
 dependencies = [
  "anyhow",
  "borsh",
@@ -1223,6 +1239,7 @@ dependencies = [
  "getrandom",
  "hex",
  "risc0-binfmt",
+ "risc0-circuit-keccak",
  "risc0-circuit-recursion",
  "risc0-circuit-rv32im",
  "risc0-core",
@@ -1240,9 +1257,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-zkvm-platform"
-version = "1.2.0-rc.1"
+version = "1.2.1-rc.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d447ce26b96637d7822ced6f82d65c2e72741f5258fecb6a59640b21f39f8dcc"
+checksum = "3656f65676ba9fd8cb662e230256ca23b19dacad9492f83a6a28987ea7c35149"
 dependencies = [
  "bytemuck",
  "getrandom",
