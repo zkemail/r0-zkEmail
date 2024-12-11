@@ -8,9 +8,12 @@ use mailparse::MailHeaderMap;
 use methods::{DKIM_VERIFY_ELF, DKIM_VERIFY_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
 use slog::{o, Discard, Logger};
-use zkemail_core::{DKIMOutput, Email};
 use std::{env, fs::File, io::Read, path::PathBuf};
-use trust_dns_resolver::TokioAsyncResolver;
+use trust_dns_resolver::{
+    config::{NameServerConfigGroup, ResolverConfig, ResolverOpts},
+    TokioAsyncResolver,
+};
+use zkemail_core::{DKIMOutput, Email, PublicKey};
 
 async fn verify_email(from_domain: &str, email_path: &PathBuf) -> Result<()> {
     let logger = Logger::root(Discard, o!());
@@ -25,8 +28,14 @@ async fn verify_email(from_domain: &str, email_path: &PathBuf) -> Result<()> {
         return Err(anyhow!("No DKIM signatures found"));
     }
 
-    let resolver = TokioAsyncResolver::tokio_from_system_conf()
-        .map_err(|e| anyhow!("Failed to initialize DNS resolver: {}", e))?;
+    let resolver = TokioAsyncResolver::tokio(
+        ResolverConfig::from_parts(
+            None,
+            vec![],
+            NameServerConfigGroup::from_ips_clear(&["8.8.8.8".parse().unwrap()], 53, true),
+        ),
+        ResolverOpts::default(),
+    );
     let resolver = from_tokio_resolver(resolver);
 
     let prover = default_prover();
@@ -86,9 +95,10 @@ async fn verify_email(from_domain: &str, email_path: &PathBuf) -> Result<()> {
             let email_proof = Email {
                 from_domain: from_domain.to_string(),
                 raw_email: raw_email.as_bytes().to_vec(),
-                public_key_type: key_type.ok_or_else(|| anyhow!("No key type found"))?,
-                public_key: extracted_public_key
-                    .ok_or_else(|| anyhow!("No public key extracted"))?,
+                public_key: PublicKey {
+                    key: extracted_public_key.ok_or_else(|| anyhow!("No public key extracted"))?,
+                    key_type: key_type.ok_or_else(|| anyhow!("No key type found"))?,
+                },
             };
 
             generate_and_verify_proof(prover.as_ref(), email_proof)?;
@@ -144,7 +154,7 @@ async fn main() -> Result<()> {
         .init();
 
     let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
+    if args.len() <= 3 {
         return Err(anyhow!("Usage: {} <from_domain> <email_path>", args[0]));
     }
 

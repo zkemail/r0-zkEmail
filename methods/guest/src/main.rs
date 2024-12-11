@@ -14,14 +14,14 @@ fn main() {
     let parsed_email = parse_mail(&input.raw_email).unwrap();
 
     let public_key =
-        DkimPublicKey::try_from_bytes(&input.public_key, &input.public_key_type).unwrap();
+        DkimPublicKey::try_from_bytes(&input.public_key.key, &input.public_key.key_type).unwrap();
 
     let mut hasher = Sha256::new();
     hasher.update(input.from_domain.as_bytes());
     let from_domain_hash = hasher.finalize().to_vec();
 
     let mut hasher = Sha256::new();
-    hasher.update(&input.public_key);
+    hasher.update(&input.public_key.key);
     let public_key_hash = hasher.finalize().to_vec();
 
     let result =

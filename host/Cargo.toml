@@ -8,7 +8,7 @@ methods = { path = "../methods" }
 risc0-zkvm = { version = "1.2.0", features = ["unstable"]}
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = "1.0"
-cfdkim = { git = "https://github.com/risc0-labs/dkim" } 
+cfdkim = { git = "https://github.com/risc0-labs/dkim", default-features = false, features = ["dns"] } 
 mailparse = "0.14.0"
 tokio = { version = "1.41.1", features = ["full"] }
 trust-dns-resolver = "0.23.2"
