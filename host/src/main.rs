@@ -1,128 +1,14 @@
-use anyhow::{anyhow, Result};
-use cfdkim::{
-    dns::from_tokio_resolver, public_key::retrieve_public_key, validate_header,
-    verify_email_with_resolver,
-};
-use log::{debug, error, info, warn};
-use mailparse::MailHeaderMap;
+pub mod utils;
+
+use anyhow::{anyhow, Ok, Result};
+use log::{debug, info};
 use methods::{DKIM_VERIFY_ELF, DKIM_VERIFY_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
-use slog::{o, Discard, Logger};
-use std::{env, fs::File, io::Read, path::PathBuf};
-use trust_dns_resolver::{
-    config::{NameServerConfigGroup, ResolverConfig, ResolverOpts},
-    TokioAsyncResolver,
-};
-use zkemail_core::{DKIMOutput, Email, PublicKey};
+use std::{env, path::PathBuf};
+use utils::{generate_email_inputs, generate_email_with_regex_inputs};
+use zkemail_core::{Email, EmailVerifierOutput, EmailWithRegex, EmailWithRegexVerifierOutput};
 
-async fn verify_email(from_domain: &str, email_path: &PathBuf) -> Result<()> {
-    let logger = Logger::root(Discard, o!());
-    let raw_email = read_email_file(email_path)?;
-    let email = mailparse::parse_mail(raw_email.as_bytes())
-        .map_err(|e| anyhow!("Failed to parse email: {}", e))?;
-
-    debug!("Looking for DKIM signatures...");
-    let dkim_headers = email.headers.get_all_headers("DKIM-Signature");
-    if dkim_headers.is_empty() {
-        warn!("No DKIM signatures found in email!");
-        return Err(anyhow!("No DKIM signatures found"));
-    }
-
-    let resolver = TokioAsyncResolver::tokio(
-        ResolverConfig::from_parts(
-            None,
-            vec![],
-            NameServerConfigGroup::from_ips_clear(&["8.8.8.8".parse().unwrap()], 53, true),
-        ),
-        ResolverOpts::default(),
-    );
-    let resolver = from_tokio_resolver(resolver);
-
-    let prover = default_prover();
-
-    let mut extracted_public_key = None;
-    let mut key_type = None;
-
-    for header in dkim_headers.iter() {
-        let header_value = String::from_utf8_lossy(header.get_value_raw());
-
-        let dkim_header = match validate_header(&header_value) {
-            Ok(h) => h,
-            Err(e) => {
-                debug!("Invalid DKIM header: {}", e);
-                continue;
-            }
-        };
-
-        if dkim_header.get_required_tag("d").to_lowercase() != from_domain.to_lowercase() {
-            continue;
-        }
-
-        let algo = dkim_header.get_required_tag("a");
-        let current_key_type = if algo.starts_with("rsa-") {
-            "rsa"
-        } else if algo.starts_with("ed25519-") {
-            "ed25519"
-        } else {
-            debug!("Unsupported algorithm: {}", algo);
-            continue;
-        };
-
-        let selector = dkim_header.get_required_tag("s");
-        match retrieve_public_key(&logger, resolver.clone(), from_domain.to_string(), selector)
-            .await
-        {
-            Ok(pk) => {
-                extracted_public_key = Some(pk.to_vec());
-                key_type = Some(current_key_type.to_string());
-                break;
-            }
-            Err(e) => {
-                debug!("Failed to retrieve public key: {}", e);
-                continue;
-            }
-        }
-    }
-
-    let result = verify_email_with_resolver(&logger, from_domain, &email, resolver)
-        .await
-        .map_err(|e| anyhow!("Failed to verify email: {}", e))?;
-
-    match result {
-        result if result.with_detail().starts_with("pass") => {
-            info!("DKIM verification passed: {}", result.with_detail());
-
-            let email_proof = Email {
-                from_domain: from_domain.to_string(),
-                raw_email: raw_email.as_bytes().to_vec(),
-                public_key: PublicKey {
-                    key: extracted_public_key.ok_or_else(|| anyhow!("No public key extracted"))?,
-                    key_type: key_type.ok_or_else(|| anyhow!("No key type found"))?,
-                },
-            };
-
-            generate_and_verify_proof(prover.as_ref(), email_proof)?;
-            Ok(())
-        }
-        result => {
-            error!("DKIM verification failed: {}", result.with_detail());
-            Err(anyhow!(
-                "DKIM verification failed: {}",
-                result.with_detail()
-            ))
-        }
-    }
-}
-
-fn read_email_file(path: &PathBuf) -> Result<String> {
-    let mut file = File::open(path).map_err(|e| anyhow!("Failed to open email file: {}", e))?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)
-        .map_err(|e| anyhow!("Failed to read email contents: {}", e))?;
-    Ok(contents)
-}
-
-fn generate_and_verify_proof(prover: &dyn Prover, email: Email) -> Result<()> {
+fn generate_and_verify_email_proof(prover: &dyn Prover, email: Email) -> Result<()> {
     debug!("Starting ZK proof generation");
 
     let input = postcard::to_allocvec(&email).unwrap();
@@ -136,7 +22,7 @@ fn generate_and_verify_proof(prover: &dyn Prover, email: Email) -> Result<()> {
         .map_err(|e| anyhow!("Failed to generate proof: {}", e))?;
 
     let receipt = prove_info.receipt;
-    let output: DKIMOutput = receipt.journal.decode()?;
+    let output: EmailVerifierOutput = receipt.journal.decode()?;
     println!("{:?}", output);
 
     receipt
@@ -147,6 +33,51 @@ fn generate_and_verify_proof(prover: &dyn Prover, email: Email) -> Result<()> {
     Ok(())
 }
 
+fn generate_and_verify_email_with_regex_proof(
+    prover: &dyn Prover,
+    email_with_regex: EmailWithRegex,
+) -> Result<()> {
+    let input = postcard::to_allocvec(&email_with_regex).unwrap();
+    let env = ExecutorEnv::builder()
+        .write_frame(&input)
+        .build()
+        .map_err(|e| anyhow!("Failed to build environment: {}", e))?;
+
+    let prove_info = prover
+        .prove(env, DKIM_VERIFY_ELF)
+        .map_err(|e| anyhow!("Failed to generate proof: {}", e))?;
+
+    let receipt = prove_info.receipt;
+    let output: EmailWithRegexVerifierOutput = receipt.journal.decode()?;
+    println!("{:?}", output);
+
+    receipt
+        .verify(DKIM_VERIFY_ID)
+        .map_err(|e| anyhow!("Failed to verify proof: {}", e))?;
+
+    info!("ZK proof generated and verified successfully");
+    Ok(())
+}
+
+async fn verify_email(from_domain: &str, email_path: &PathBuf) -> Result<()> {
+    let prover = default_prover();
+    let email_inputs = generate_email_inputs(from_domain, email_path).await?;
+    generate_and_verify_email_proof(prover.as_ref(), email_inputs)?;
+    Ok(())
+}
+
+async fn verify_email_with_regex(
+    from_domain: &str,
+    email_path: &PathBuf,
+    config_path: &PathBuf,
+) -> Result<()> {
+    let prover = default_prover();
+    let email_with_regex =
+        generate_email_with_regex_inputs(from_domain, email_path, config_path).await?;
+    generate_and_verify_email_with_regex_proof(prover.as_ref(), email_with_regex)?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -154,15 +85,37 @@ async fn main() -> Result<()> {
         .init();
 
     let args: Vec<String> = env::args().collect();
-    if args.len() <= 3 {
-        return Err(anyhow!("Usage: {} <from_domain> <email_path>", args[0]));
+    if args.len() < 3 {
+        return Err(anyhow!(
+            "Usage: {} <from_domain> <email_path> [regex_config_path]",
+            args[0]
+        ));
     }
 
     let from_domain = &args[1];
     let email_path = PathBuf::from(&args[2]);
 
-    verify_email(from_domain, &email_path).await?;
-    println!("Email verification and proof generation completed successfully");
+    // Optional regex config
+    let config_path = if args.len() > 3 {
+        Some(PathBuf::from(&args[3]))
+    } else {
+        None
+    };
 
+    match config_path {
+        Some(config) => {
+            info!(
+                "Starting email verification with regex config from {:?}",
+                config
+            );
+            verify_email_with_regex(from_domain, &email_path, &config).await?;
+        }
+        None => {
+            info!("Starting basic email verification without regex config");
+            verify_email(from_domain, &email_path).await?;
+        }
+    }
+
+    println!("Email verification and proof generation completed successfully");
     Ok(())
 }
