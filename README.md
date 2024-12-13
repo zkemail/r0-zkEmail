@@ -7,7 +7,7 @@ This repository contains a RISC Zero project to verify DKIM signatures and regex
 Clone the repository and navigate into it.
 
 ```
-git clone https://github.com/zk-email/r0-zkEmail.git
+git clone https://github.com/zkemail/r0-zkEmail.git
 
 cd r0-zkEmail
 ```
@@ -58,4 +58,4 @@ Use it at your own risk. This repository is experimental and unaudited. Do not u
 
 ## License
 
-This project is licensed under the Apache2 license. See [LICENSE](https://github.com/zk-email/r0-zkEmail/blob/main/LICENSE).
+This project is licensed under the Apache2 license. See [LICENSE](https://github.com/zkemail/r0-zkEmail/blob/main/LICENSE).
