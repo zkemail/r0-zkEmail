@@ -535,22 +535,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4445909572dbd556c457c849c4ca58623d84b27c8fff1e74b0b4227d8b90d17b"
 
 [[package]]
-name = "email_with_regex_verify"
-version = "0.1.0"
-dependencies = [
- "cfdkim",
- "mailparse",
- "postcard",
- "regex-automata",
- "risc0-zkvm",
- "rsa",
- "serde",
- "sha2",
- "slog",
- "zkemail-core",
-]
-
-[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -706,6 +690,22 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
+]
+
+[[package]]
+name = "guest"
+version = "0.1.0"
+dependencies = [
+ "cfdkim",
+ "mailparse",
+ "postcard",
+ "regex-automata",
+ "risc0-zkvm",
+ "rsa",
+ "serde",
+ "sha2",
+ "slog",
+ "zkemail-core",
 ]
 
 [[package]]

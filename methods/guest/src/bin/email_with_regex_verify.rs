@@ -1,3 +1,5 @@
+#![no_main]
+
 use cfdkim::{ verify_email_with_key, DkimPublicKey };
 use mailparse::{ parse_mail, ParsedMail };
 use risc0_zkvm::guest::env;
@@ -72,6 +74,8 @@ fn verify_dkim(input: &EmailWithRegex, logger: &Logger) -> bool {
 
     result.with_detail().starts_with("pass")
 }
+
+risc0_zkvm::guest::entry!(main);
 
 fn main() {
     let input: Vec<u8> = env::read_frame();
