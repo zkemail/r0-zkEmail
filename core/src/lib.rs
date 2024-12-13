@@ -40,6 +40,6 @@ pub struct EmailVerifierOutput {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmailWithRegexVerifierOutput {
     pub email: EmailVerifierOutput,
-    pub regex_verified: Vec<bool>,
-    pub regex_matches: Vec<Vec<usize>>,
+    pub regex_verified: bool,
+    pub regex_matches: Vec<String>,
 }

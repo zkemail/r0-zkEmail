@@ -2,7 +2,9 @@ pub mod utils;
 
 use anyhow::{anyhow, Ok, Result};
 use log::{debug, info};
-use methods::{DKIM_VERIFY_ELF, DKIM_VERIFY_ID};
+use methods::{
+    EMAIL_VERIFY_ELF, EMAIL_VERIFY_ID, EMAIL_WITH_REGEX_VERIFY_ELF, EMAIL_WITH_REGEX_VERIFY_ID,
+};
 use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
 use std::{env, path::PathBuf};
 use utils::{generate_email_inputs, generate_email_with_regex_inputs};
@@ -18,7 +20,7 @@ fn generate_and_verify_email_proof(prover: &dyn Prover, email: Email) -> Result<
         .map_err(|e| anyhow!("Failed to build environment: {}", e))?;
 
     let prove_info = prover
-        .prove(env, DKIM_VERIFY_ELF)
+        .prove(env, EMAIL_VERIFY_ELF)
         .map_err(|e| anyhow!("Failed to generate proof: {}", e))?;
 
     let receipt = prove_info.receipt;
@@ -26,7 +28,7 @@ fn generate_and_verify_email_proof(prover: &dyn Prover, email: Email) -> Result<
     println!("{:?}", output);
 
     receipt
-        .verify(DKIM_VERIFY_ID)
+        .verify(EMAIL_VERIFY_ID)
         .map_err(|e| anyhow!("Failed to verify proof: {}", e))?;
 
     info!("ZK proof generated and verified successfully");
@@ -44,7 +46,7 @@ fn generate_and_verify_email_with_regex_proof(
         .map_err(|e| anyhow!("Failed to build environment: {}", e))?;
 
     let prove_info = prover
-        .prove(env, DKIM_VERIFY_ELF)
+        .prove(env, EMAIL_WITH_REGEX_VERIFY_ELF)
         .map_err(|e| anyhow!("Failed to generate proof: {}", e))?;
 
     let receipt = prove_info.receipt;
@@ -52,7 +54,7 @@ fn generate_and_verify_email_with_regex_proof(
     println!("{:?}", output);
 
     receipt
-        .verify(DKIM_VERIFY_ID)
+        .verify(EMAIL_WITH_REGEX_VERIFY_ID)
         .map_err(|e| anyhow!("Failed to verify proof: {}", e))?;
 
     info!("ZK proof generated and verified successfully");

@@ -7,4 +7,4 @@ edition = "2021"
 risc0-build = { version = "1.2.0", features = ["unstable"] }
 
 [package.metadata.risc0]
-methods = ["guest"]
+methods = ["email-verify", "email-with-regex-verify"]

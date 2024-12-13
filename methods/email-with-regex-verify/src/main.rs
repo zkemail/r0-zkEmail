@@ -3,7 +3,7 @@ use mailparse::parse_mail;
 use risc0_zkvm::guest::env;
 use sha2::{ Digest, Sha256 };
 use slog::{ o, Discard, Logger };
-use zkemail_core::{ EmailVerifierOutput, Email, EmailWithRegex, EmailWithRegexVerifierOutput };
+use zkemail_core::{ EmailVerifierOutput, EmailWithRegex, EmailWithRegexVerifierOutput };
 use regex_automata::{ dfa::{ dense, regex::Regex }, Match };
 
 fn main() {
@@ -39,8 +39,13 @@ fn main() {
         _ => false,
     };
 
-    let mut regex_verified = vec![false; input.regex_info.parts.len()];
-    let mut regex_matches = vec![vec![]; input.regex_info.parts.len()];
+    let mut regex_verified = false;
+    let mut regex_matches = Vec::with_capacity(
+        input.regex_info.parts
+            .iter()
+            .filter(|(is_public, _)| *is_public)
+            .count()
+    );
 
     let email_body = if parsed_email.subparts.is_empty() {
         parsed_email.get_body().unwrap()
@@ -55,8 +60,8 @@ fn main() {
         body.unwrap_or_else(|| parsed_email.subparts[0].get_body().unwrap())
     };
 
-    for (i, part) in input.regex_info.parts.iter().enumerate() {
-        let (_is_public, dfa) = part;
+    for part in input.regex_info.parts.iter() {
+        let (is_public, dfa) = part;
         let fwd: dense::DFA<&[u32]> = dense::DFA
             ::from_bytes(&dfa.fwd)
             .expect("Failed to convert bytes to DFA").0;
@@ -68,11 +73,13 @@ fn main() {
         let matches: Vec<Match> = re.find_iter(&email_body).collect();
 
         if matches.len() > 0 {
-            regex_verified[i] = true;
-            regex_matches[i] = matches
-                .iter()
-                .map(|m| m.start())
-                .collect();
+            regex_verified = true;
+            if *is_public {
+                let start_index = matches[0].start();
+                let end_index = matches[0].end();
+                let substring = email_body[start_index..end_index].to_string();
+                regex_matches.push(substring);
+            }
         }
     }
 
