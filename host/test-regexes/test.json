@@ -1,0 +1,20 @@
+{
+    "parts": [
+        {
+            "is_public": false,
+            "regex": "Accept guardian request for "
+        },
+        {
+            "is_public": true,
+            "regex": "0x[a-fA-F0-9]{40}"
+        },
+        {
+            "is_public": false,
+            "regex": " code "
+        },
+        {
+            "is_public": true,
+            "regex": "[a-fA-F0-9]{64}"
+        }
+    ]
+}
