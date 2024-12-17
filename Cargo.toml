@@ -2,6 +2,26 @@
 resolver = "2"
 members = ["host", "methods", "core"]
 
+[workspace.dependencies]
+risc0-build = "1.2.0"
+risc0-zkvm = "1.2.0"
+
+serde = "1.0"
+tracing-subscriber = "0.3"
+cfdkim = { git = "https://github.com/risc0-labs/dkim", default-features = false, features = ["dns"]  } 
+mailparse = "0.14.0"
+tokio = "1.41.1"
+trust-dns-resolver = "0.23.2"
+slog = "2.7.0"
+anyhow = "1.0.93"
+log = "0.4.22"
+postcard = "1.0"
+serde_json = "1.0"
+regex-automata = "0.4.8"
+
+methods = { path = "./methods" }
+zkemail-core = { path = "./core" }
+
 # Always optimize; building and running the guest takes much longer without optimization.
 [profile.dev]
 opt-level = 3
