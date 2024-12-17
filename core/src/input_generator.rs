@@ -1,3 +1,4 @@
+use crate::structs::{Email, EmailWithRegex, PublicKey, RegexConfig, RegexInfo, DFA};
 use anyhow::{anyhow, Result};
 use cfdkim::{
     dns::from_tokio_resolver, public_key::retrieve_public_key, validate_header,
@@ -6,25 +7,12 @@ use cfdkim::{
 use log::{debug, error, info, warn};
 use mailparse::MailHeaderMap;
 use regex_automata::dfa::regex::Regex;
-use serde::{Deserialize, Serialize};
 use slog::{o, Discard, Logger};
 use std::{fs::File, io::Read, path::PathBuf};
 use trust_dns_resolver::{
     config::{NameServerConfigGroup, ResolverConfig, ResolverOpts},
     TokioAsyncResolver,
 };
-use zkemail_core::{Email, EmailWithRegex, PublicKey, RegexInfo, DFA};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RegexPart {
-    pub is_public: bool,
-    pub regex: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RegexConfig {
-    pub parts: Vec<RegexPart>,
-}
 
 pub fn read_email_file(path: &PathBuf) -> Result<String> {
     let mut file = File::open(path).map_err(|e| anyhow!("Failed to open email file: {}", e))?;

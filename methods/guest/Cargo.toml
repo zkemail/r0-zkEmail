@@ -18,7 +18,7 @@ sha2 = "0.10.6"
 slog = "2.7.0"
 rsa = "=0.9.6"
 postcard = "1.0"
-zkemail-core = { path = "../../core" }
+zkemail-core = { path = "../../core", default-features = false, features = ["zkvm"] }
 regex-automata = "0.4.8"
 
 [patch.crates-io]

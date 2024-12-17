@@ -3,5 +3,18 @@ name = "zkemail-core"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["host"]
+host = ["serde", "cfdkim", "mailparse", "trust-dns-resolver", "slog", "anyhow", "log", "serde_json", "regex-automata"]
+zkvm = ["serde"]
+
 [dependencies]
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive"], optional = true }
+cfdkim = { workspace = true, optional = true } 
+mailparse = { workspace = true, optional = true }
+trust-dns-resolver = { workspace = true, optional = true }
+slog = { workspace = true, optional = true }
+anyhow = { workspace = true, optional = true }
+log = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+regex-automata = { workspace = true, optional = true }
