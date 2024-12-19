@@ -1,5 +1,6 @@
 {
-    "parts": [
+    "header_parts": [],
+    "body_parts": [
         {
             "is_public": false,
             "regex": "Accept guardian request for "

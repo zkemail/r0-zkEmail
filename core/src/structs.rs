@@ -1,4 +1,4 @@
-use serde::{ Deserialize, Serialize };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PublicKey {
@@ -14,7 +14,8 @@ pub struct DFA {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegexInfo {
-    pub parts: Vec<(bool, DFA)>, // (is_public, dfa)
+    pub header_parts: Vec<(bool, DFA)>, // (is_public, dfa)
+    pub body_parts: Vec<(bool, DFA)>,   // (is_public, dfa)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,8 +41,10 @@ pub struct EmailVerifierOutput {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmailWithRegexVerifierOutput {
     pub email: EmailVerifierOutput,
-    pub regex_verified: bool,
-    pub regex_matches: Vec<String>,
+    pub header_regex_verified: bool,
+    pub body_regex_verified: bool,
+    pub header_regex_matches: Vec<String>,
+    pub body_regex_matches: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -52,5 +55,6 @@ pub struct RegexPart {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegexConfig {
-    pub parts: Vec<RegexPart>,
+    pub header_parts: Vec<RegexPart>,
+    pub body_parts: Vec<RegexPart>,
 }

@@ -1,29 +1,29 @@
-use std::{ fs::{ self, File }, path::{ Path, PathBuf }, time::Duration };
-
-use alloy::{ primitives::{ utils::parse_ether, Address }, signers::local::PrivateKeySigner };
-use anyhow::{ bail, ensure, Result };
+use alloy::{
+    primitives::{utils::parse_ether, Address},
+    signers::local::PrivateKeySigner,
+};
+use anyhow::{bail, ensure, Result};
 use boundless_market::{
     client::ClientBuilder,
-    contracts::{ Input, Offer, Predicate, ProofRequest, Requirements },
+    contracts::{Input, Offer, Predicate, ProofRequest, Requirements},
     input::InputBuilder,
     storage::StorageProviderConfig,
 };
 use clap::Parser;
-use serde::{ Deserialize, Serialize };
-use zkemail_core::{
-    generate_email_inputs,
-    generate_email_with_regex_inputs,
-    Email,
-    EmailWithRegex,
-};
 use methods::{
-    EMAIL_VERIFY_ELF,
-    EMAIL_VERIFY_ID,
-    EMAIL_WITH_REGEX_VERIFY_ELF,
-    EMAIL_WITH_REGEX_VERIFY_ID,
+    EMAIL_VERIFY_ELF, EMAIL_VERIFY_ID, EMAIL_WITH_REGEX_VERIFY_ELF, EMAIL_WITH_REGEX_VERIFY_ID,
 };
-use risc0_zkvm::{ default_executor, sha::Digestible, ExecutorEnv };
+use risc0_zkvm::{default_executor, sha::Digestible, ExecutorEnv};
+use serde::{Deserialize, Serialize};
+use std::{
+    fs::{self, File},
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use url::Url;
+use zkemail_core::{
+    generate_email_inputs, generate_email_with_regex_inputs, Email, EmailWithRegex,
+};
 
 /// Timeout for the transaction to be confirmed.
 pub const TX_TIMEOUT: Duration = Duration::from_secs(30);
@@ -72,8 +72,7 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber
-        ::fmt()
+    tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
@@ -92,7 +91,8 @@ async fn main() -> Result<()> {
         .with_order_stream_url(args.offchain.then_some(args.order_stream_url).flatten())
         .with_storage_provider_config(args.storage_config)
         .with_private_key(args.wallet_private_key)
-        .build().await?;
+        .build()
+        .await?;
 
     // Upload the ELF to the storage provider so that it can be fetched by the market.
     ensure!(
@@ -111,11 +111,9 @@ async fn main() -> Result<()> {
     // Encode the input and upload it to the storage provider.
     let input = match args.regex_config_path {
         Some(config) => {
-            let email_with_regex_inputs = generate_email_with_regex_inputs(
-                &args.email_domain,
-                &args.email_path,
-                &config
-            ).await?;
+            let email_with_regex_inputs =
+                generate_email_with_regex_inputs(&args.email_domain, &args.email_path, &config)
+                    .await?;
             postcard::to_allocvec(&email_with_regex_inputs)?
         }
         None => {
@@ -142,7 +140,8 @@ async fn main() -> Result<()> {
     // journal and set a price, you can skip this step.
     let env = ExecutorEnv::builder().write_slice(&input).build()?;
     let session_info = default_executor().execute(env, image)?;
-    let mcycles_count = session_info.segments
+    let mcycles_count = session_info
+        .segments
         .iter()
         .map(|segment| 1 << segment.po2)
         .sum::<u64>()
@@ -165,7 +164,10 @@ async fn main() -> Result<()> {
     let request = ProofRequest::default()
         .with_image_url(&image_url)
         .with_input(request_input)
-        .with_requirements(Requirements::new(id, Predicate::digest_match(journal.digest())))
+        .with_requirements(Requirements::new(
+            id,
+            Predicate::digest_match(journal.digest()),
+        ))
         .with_offer(
             Offer::default()
                 // The market uses a reverse Dutch auction mechanism to match requests with provers.
@@ -180,7 +182,7 @@ async fn main() -> Result<()> {
                 // unfulfilled in the market before it expires. If a prover locks in
                 // the request and does not fulfill it before the timeout, the prover can be
                 // slashed.
-                .with_timeout(1000)
+                .with_timeout(1000),
         );
 
     // Send the request and wait for it to be completed.
@@ -189,11 +191,9 @@ async fn main() -> Result<()> {
 
     // Wait for the request to be fulfilled by the market, returning the journal and seal.
     tracing::info!("Waiting for 0x{request_id:x} to be fulfilled");
-    let (journal, seal) = boundless_client.wait_for_request_fulfillment(
-        request_id,
-        Duration::from_secs(5),
-        expires_at
-    ).await?;
+    let (journal, seal) = boundless_client
+        .wait_for_request_fulfillment(request_id, Duration::from_secs(5), expires_at)
+        .await?;
     tracing::info!("Request 0x{request_id:x} fulfilled");
 
     // Create build directory if it doesn't exist
@@ -201,8 +201,7 @@ async fn main() -> Result<()> {
 
     // Save data in a format ready for smart contract consumption
     let contract_data = Path::new("app/build/contract_data.json");
-    let contract_data_json =
-        serde_json::json!({
+    let contract_data_json = serde_json::json!({
     "journal": format!("0x{}", hex::encode(&journal)),
     "seal": format!("0x{}", hex::encode(&seal)),
     "requestId": format!("0x{:x}", request_id),

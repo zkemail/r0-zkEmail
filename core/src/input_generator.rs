@@ -1,4 +1,7 @@
-use crate::structs::{Email, EmailWithRegex, PublicKey, RegexConfig, RegexInfo, DFA};
+use crate::{
+    structs::{Email, EmailWithRegex, PublicKey, RegexConfig, RegexInfo, DFA},
+    RegexPart,
+};
 use anyhow::{anyhow, Result};
 use cfdkim::{
     dns::from_tokio_resolver, public_key::retrieve_public_key, validate_header,
@@ -27,6 +30,30 @@ pub fn read_regex_config(path: &PathBuf) -> Result<RegexConfig> {
     let config: RegexConfig =
         serde_json::from_reader(file).map_err(|e| anyhow!("Failed to read regex config: {}", e))?;
     Ok(config)
+}
+
+fn compile_regex_parts(parts: &[RegexPart], input: &[u8]) -> Result<Vec<(bool, DFA)>> {
+    let mut compiled_parts = Vec::new();
+
+    for part in parts.iter() {
+        let re = Regex::new(&part.regex)?;
+
+        if !re.is_match(input) {
+            return Err(anyhow!("Input doesn't match regex pattern: {}", part.regex));
+        }
+
+        let (fwd_bytes, _) = re.forward().to_bytes_little_endian();
+        let (rev_bytes, _) = re.reverse().to_bytes_little_endian();
+        compiled_parts.push((
+            part.is_public,
+            DFA {
+                fwd: fwd_bytes,
+                bwd: rev_bytes,
+            },
+        ));
+    }
+
+    Ok(compiled_parts)
 }
 
 pub async fn generate_email_inputs(from_domain: &str, email_path: &PathBuf) -> Result<Email> {
@@ -131,51 +158,32 @@ pub async fn generate_email_with_regex_inputs(
     config_path: &PathBuf,
 ) -> Result<EmailWithRegex> {
     let email_inputs = generate_email_inputs(from_domain, email_path).await?;
+    let email = mailparse::parse_mail(&email_inputs.raw_email)?;
 
-    let email = mailparse::parse_mail(&email_inputs.raw_email)
-        .map_err(|e| anyhow!("Failed to parse email: {}", e))?;
+    let header_bytes = &email_inputs.raw_email[..email.headers.len()];
 
     let email_body = if email.subparts.is_empty() {
-        email.get_body()?
+        email.get_body_raw()?
     } else {
         let mut body = None;
         for part in email.subparts.iter() {
             if part.ctype.mimetype == "text/html" {
-                body = Some(part.get_body()?);
+                body = Some(part.get_body_raw()?);
                 break;
             }
         }
-        body.unwrap_or_else(|| email.subparts[0].get_body().unwrap())
+        body.unwrap_or_else(|| email.subparts[0].get_body_raw().unwrap())
     };
 
     let regex_config = read_regex_config(config_path)?;
-    let mut parts = Vec::new();
+    let body_parts = compile_regex_parts(&regex_config.body_parts, &email_body)?;
+    let header_parts = compile_regex_parts(&regex_config.header_parts, header_bytes)?;
 
-    for part in regex_config.parts.iter() {
-        let re = Regex::new(&part.regex)?;
-
-        if !re.is_match(email_body.as_bytes()) {
-            return Err(anyhow!(
-                "Email body doesn't match regex pattern: {}",
-                part.regex
-            ));
-        }
-
-        let (fwd_bytes, _) = re.forward().to_bytes_little_endian();
-        let (rev_bytes, _) = re.reverse().to_bytes_little_endian();
-        parts.push((
-            part.is_public,
-            DFA {
-                fwd: fwd_bytes,
-                bwd: rev_bytes,
-            },
-        ));
-    }
-
-    let email_with_regex = EmailWithRegex {
+    Ok(EmailWithRegex {
         email: email_inputs,
-        regex_info: RegexInfo { parts },
-    };
-
-    Ok(email_with_regex)
+        regex_info: RegexInfo {
+            header_parts,
+            body_parts,
+        },
+    })
 }
