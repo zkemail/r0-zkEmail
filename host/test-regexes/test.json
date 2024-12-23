@@ -2,20 +2,18 @@
     "header_parts": [],
     "body_parts": [
         {
-            "is_public": false,
-            "regex": "Accept guardian request for "
+            "Capture": {
+                "prefix": "Accept guardian request for ",
+                "capture": "0x[a-fA-F0-9]{40}",
+                "suffix": " code "
+            }
         },
         {
-            "is_public": true,
-            "regex": "0x[a-fA-F0-9]{40}"
-        },
-        {
-            "is_public": false,
-            "regex": " code "
-        },
-        {
-            "is_public": true,
-            "regex": "[a-fA-F0-9]{64}"
+            "Capture": {
+                "prefix": "Accept guardian request for 0x[a-fA-F0-9]{40} code ",
+                "capture": "[a-fA-F0-9]{64}",
+                "suffix": ""
+            }
         }
     ]
 }

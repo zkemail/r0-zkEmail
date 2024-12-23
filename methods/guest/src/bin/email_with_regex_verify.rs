@@ -5,8 +5,13 @@ use mailparse::{ parse_mail, ParsedMail };
 use risc0_zkvm::guest::env;
 use sha2::{ Digest, Sha256 };
 use slog::{ o, Discard, Logger };
-use zkemail_core::{ EmailVerifierOutput, EmailWithRegex, EmailWithRegexVerifierOutput, DFA };
-use regex_automata::{ dfa::{ dense, regex::Regex }, Match };
+use zkemail_core::{
+    EmailVerifierOutput,
+    EmailWithRegex,
+    EmailWithRegexVerifierOutput,
+    CompiledRegex,
+};
+use regex_automata::dfa::{ dense, regex::Regex };
 
 fn hash_bytes(data: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
@@ -28,32 +33,36 @@ fn extract_email_body(parsed_email: &ParsedMail) -> Vec<u8> {
     body.unwrap()
 }
 
-fn process_regex_parts(parts: &[(bool, DFA)], input: &[u8]) -> (bool, Vec<String>) {
-    let mut regex_verified = false;
-    let mut regex_matches = Vec::with_capacity(
-        parts
-            .iter()
-            .filter(|(is_public, _)| *is_public)
-            .count()
-    );
+fn process_regex_parts(compiled_regexes: &[CompiledRegex], input: &[u8]) -> (bool, Vec<String>) {
+    let mut regex_verified = true;
+    let mut regex_matches = Vec::new();
 
-    for part in parts {
-        let (is_public, dfa) = part;
-        let fwd = dense::DFA::from_bytes(&dfa.fwd).unwrap().0;
-        let rev = dense::DFA::from_bytes(&dfa.bwd).unwrap().0;
+    for regex in compiled_regexes {
+        let verify_fwd = dense::DFA::from_bytes(&regex.verify_re.fwd).unwrap().0;
+        let verify_rev = dense::DFA::from_bytes(&regex.verify_re.bwd).unwrap().0;
+        let verify_re = Regex::builder().build_from_dfas(verify_fwd, verify_rev);
 
-        let re = Regex::builder().build_from_dfas(fwd, rev);
-        let matches: Vec<Match> = re.find_iter(input).collect();
+        if let Some(full_match) = verify_re.find(input) {
+            regex_verified &= true;
 
-        if !matches.is_empty() {
-            regex_verified = true;
-            if *is_public {
-                let substring = std::str
-                    ::from_utf8(&input[matches[0].start()..matches[0].end()])
-                    .unwrap()
-                    .to_owned();
-                regex_matches.push(substring);
+            // Only search within the range of the full match
+            if let Some(capture_re) = &regex.capture_re {
+                let capture_fwd = dense::DFA::from_bytes(&capture_re.fwd).unwrap().0;
+                let capture_rev = dense::DFA::from_bytes(&capture_re.bwd).unwrap().0;
+                let capture_re = Regex::builder().build_from_dfas(capture_fwd, capture_rev);
+
+                let capture_input = &input[full_match.range()];
+                let last_match = capture_re.find_iter(capture_input).last();
+                if let Some(m) = last_match {
+                    let substring = std::str
+                        ::from_utf8(&capture_input[m.range()])
+                        .unwrap()
+                        .to_owned();
+                    regex_matches.push(substring);
+                }
             }
+        } else {
+            regex_verified = false;
         }
     }
 
@@ -89,7 +98,7 @@ fn main() {
 
     let verified = verify_dkim(&input, &logger);
 
-    let header_bytes = &input.email.raw_email[..parsed_email.headers.len()];
+    let header_bytes = parsed_email.get_headers().get_raw_bytes();
     let email_body = extract_email_body(&parsed_email);
 
     let (header_regex_verified, header_regex_matches) = process_regex_parts(

@@ -188,13 +188,17 @@ async fn main() -> Result<()> {
     // Send the request and wait for it to be completed.
     let (request_id, expires_at) = boundless_client.submit_request(&request).await?;
     tracing::info!("Request 0x{request_id:x} submitted");
+    let start_time = std::time::Instant::now();
 
     // Wait for the request to be fulfilled by the market, returning the journal and seal.
     tracing::info!("Waiting for 0x{request_id:x} to be fulfilled");
     let (journal, seal) = boundless_client
         .wait_for_request_fulfillment(request_id, Duration::from_secs(5), expires_at)
         .await?;
-    tracing::info!("Request 0x{request_id:x} fulfilled");
+
+    // Calculate and log elapsed time
+    let proof_time = start_time.elapsed();
+    tracing::info!("Request 0x{request_id:x} fulfilled in {:.2?}", proof_time);
 
     // Create build directory if it doesn't exist
     fs::create_dir_all("app/build")?;

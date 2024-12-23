@@ -13,9 +13,15 @@ pub struct DFA {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct CompiledRegex {
+    pub verify_re: DFA,
+    pub capture_re: Option<DFA>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RegexInfo {
-    pub header_parts: Vec<(bool, DFA)>, // (is_public, dfa)
-    pub body_parts: Vec<(bool, DFA)>,   // (is_public, dfa)
+    pub header_parts: Vec<CompiledRegex>,
+    pub body_parts: Vec<CompiledRegex>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -48,13 +54,19 @@ pub struct EmailWithRegexVerifierOutput {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RegexPart {
-    pub is_public: bool,
-    pub regex: String,
+pub enum RegexPattern {
+    Capture {
+        prefix: String,
+        capture: String,
+        suffix: String,
+    },
+    Match {
+        pattern: String,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RegexConfig {
-    pub header_parts: Vec<RegexPart>,
-    pub body_parts: Vec<RegexPart>,
+    pub header_parts: Vec<RegexPattern>,
+    pub body_parts: Vec<RegexPattern>,
 }

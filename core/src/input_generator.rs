@@ -1,6 +1,6 @@
 use crate::{
-    structs::{Email, EmailWithRegex, PublicKey, RegexConfig, RegexInfo, DFA},
-    RegexPart,
+    structs::{Email, EmailWithRegex, PublicKey, RegexConfig, RegexInfo, RegexPattern, DFA},
+    CompiledRegex,
 };
 use anyhow::{anyhow, Result};
 use cfdkim::{
@@ -32,25 +32,54 @@ pub fn read_regex_config(path: &PathBuf) -> Result<RegexConfig> {
     Ok(config)
 }
 
-fn compile_regex_parts(parts: &[RegexPart], input: &[u8]) -> Result<Vec<(bool, DFA)>> {
+fn compile_regex_parts(parts: &[RegexPattern], input: &[u8]) -> Result<Vec<CompiledRegex>> {
     let mut compiled_parts = Vec::new();
 
     for part in parts.iter() {
-        let re = Regex::new(&part.regex)?;
+        let regex = match part {
+            RegexPattern::Match { pattern } => {
+                let verify_re = Regex::new(pattern)?;
+                let re = CompiledRegex {
+                    verify_re: DFA {
+                        fwd: verify_re.forward().to_bytes_little_endian().0,
+                        bwd: verify_re.reverse().to_bytes_little_endian().0,
+                    },
+                    capture_re: None,
+                };
+                compiled_parts.push(re);
+                verify_re
+            }
+            RegexPattern::Capture {
+                prefix,
+                capture,
+                suffix,
+            } => {
+                let pattern = format!("{}{}{}", prefix, capture, suffix);
+                let verify_re = Regex::new(&pattern)?;
+                let capture_re = Regex::new(&capture)?;
+                let re = CompiledRegex {
+                    verify_re: DFA {
+                        fwd: verify_re.forward().to_bytes_little_endian().0,
+                        bwd: verify_re.reverse().to_bytes_little_endian().0,
+                    },
+                    capture_re: Some(DFA {
+                        fwd: capture_re.forward().to_bytes_little_endian().0,
+                        bwd: capture_re.reverse().to_bytes_little_endian().0,
+                    }),
+                };
+                compiled_parts.push(re);
+                verify_re
+            }
+        };
 
-        if !re.is_match(input) {
-            return Err(anyhow!("Input doesn't match regex pattern: {}", part.regex));
+        let matches = regex.find_iter(input).collect::<Vec<_>>();
+        println!(
+            "matches: {:?}",
+            std::str::from_utf8(&input[matches[0].range()])
+        );
+        if matches.len() != 1 {
+            return Err(anyhow!("Input doesn't match regex pattern: {:?}", part));
         }
-
-        let (fwd_bytes, _) = re.forward().to_bytes_little_endian();
-        let (rev_bytes, _) = re.reverse().to_bytes_little_endian();
-        compiled_parts.push((
-            part.is_public,
-            DFA {
-                fwd: fwd_bytes,
-                bwd: rev_bytes,
-            },
-        ));
     }
 
     Ok(compiled_parts)
@@ -160,7 +189,7 @@ pub async fn generate_email_with_regex_inputs(
     let email_inputs = generate_email_inputs(from_domain, email_path).await?;
     let email = mailparse::parse_mail(&email_inputs.raw_email)?;
 
-    let header_bytes = &email_inputs.raw_email[..email.headers.len()];
+    let header_bytes = email.get_headers().get_raw_bytes();
 
     let email_body = if email.subparts.is_empty() {
         email.get_body_raw()?

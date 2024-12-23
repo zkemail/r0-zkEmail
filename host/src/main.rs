@@ -29,7 +29,6 @@ where
     debug!("Starting ZK proof generation");
 
     let input = postcard::to_allocvec(&input_data).unwrap();
-    std::fs::write("input_original.bin", &input)?;
     let env = ExecutorEnv::builder()
         .write_frame(&input)
         .build()
