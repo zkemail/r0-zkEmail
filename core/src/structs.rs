@@ -15,7 +15,7 @@ pub struct DFA {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompiledRegex {
     pub verify_re: DFA,
-    pub capture_re: Option<DFA>,
+    pub capture_str: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

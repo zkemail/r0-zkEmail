@@ -20,53 +20,47 @@ fn hash_bytes(data: &[u8]) -> Vec<u8> {
 }
 
 fn extract_email_body(parsed_email: &ParsedMail) -> Vec<u8> {
-    if parsed_email.subparts.is_empty() {
-        return parsed_email.get_body_raw().unwrap();
-    }
-
-    let body = parsed_email.subparts
+    parsed_email.subparts
         .iter()
         .find(|part| part.ctype.mimetype == "text/html")
-        .map(|part| part.get_body_raw())
-        .unwrap_or_else(|| parsed_email.subparts[0].get_body_raw());
-
-    body.unwrap()
+        .map_or_else(
+            ||
+                parsed_email.subparts
+                    .get(0)
+                    .map_or(parsed_email.get_body_raw().unwrap(), |part|
+                        part.get_body_raw().unwrap()
+                    ),
+            |part| part.get_body_raw().unwrap()
+        )
 }
 
 fn process_regex_parts(compiled_regexes: &[CompiledRegex], input: &[u8]) -> (bool, Vec<String>) {
-    let mut regex_verified = true;
-    let mut regex_matches = Vec::new();
+    let capture_count = compiled_regexes
+        .iter()
+        .filter(|r| r.capture_str.is_some())
+        .count();
+    let mut regex_matches = Vec::with_capacity(capture_count);
 
-    for regex in compiled_regexes {
-        let verify_fwd = dense::DFA::from_bytes(&regex.verify_re.fwd).unwrap().0;
-        let verify_rev = dense::DFA::from_bytes(&regex.verify_re.bwd).unwrap().0;
-        let verify_re = Regex::builder().build_from_dfas(verify_fwd, verify_rev);
+    for part in compiled_regexes {
+        let fwd = dense::DFA::from_bytes(&part.verify_re.fwd).unwrap().0;
+        let rev = dense::DFA::from_bytes(&part.verify_re.bwd).unwrap().0;
+        let re = Regex::builder().build_from_dfas(fwd, rev);
 
-        if let Some(full_match) = verify_re.find(input) {
-            regex_verified &= true;
+        let matches: Vec<_> = re.find_iter(input).collect();
+        if matches.len() != 1 {
+            return (false, regex_matches);
+        }
 
-            // Only search within the range of the full match
-            if let Some(capture_re) = &regex.capture_re {
-                let capture_fwd = dense::DFA::from_bytes(&capture_re.fwd).unwrap().0;
-                let capture_rev = dense::DFA::from_bytes(&capture_re.bwd).unwrap().0;
-                let capture_re = Regex::builder().build_from_dfas(capture_fwd, capture_rev);
-
-                let capture_input = &input[full_match.range()];
-                let last_match = capture_re.find_iter(capture_input).last();
-                if let Some(m) = last_match {
-                    let substring = std::str
-                        ::from_utf8(&capture_input[m.range()])
-                        .unwrap()
-                        .to_owned();
-                    regex_matches.push(substring);
-                }
+        if let Some(capture_str) = &part.capture_str {
+            let matched_str = std::str::from_utf8(&input[matches[0].range()]).unwrap();
+            if !matched_str.contains(capture_str) || matched_str.matches(capture_str).count() != 1 {
+                return (false, regex_matches);
             }
-        } else {
-            regex_verified = false;
+            regex_matches.push(capture_str.to_string());
         }
     }
 
-    (regex_verified, regex_matches)
+    (true, regex_matches)
 }
 
 fn verify_dkim(input: &EmailWithRegex, logger: &Logger) -> bool {

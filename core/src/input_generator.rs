@@ -9,7 +9,7 @@ use cfdkim::{
 };
 use log::{debug, error, info, warn};
 use mailparse::MailHeaderMap;
-use regex_automata::dfa::regex::Regex;
+use regex_automata::{dfa::regex::Regex as DFARegex, meta::Regex as MetaRegex};
 use slog::{o, Discard, Logger};
 use std::{fs::File, io::Read, path::PathBuf};
 use trust_dns_resolver::{
@@ -18,9 +18,12 @@ use trust_dns_resolver::{
 };
 
 pub fn read_email_file(path: &PathBuf) -> Result<String> {
-    let mut file = File::open(path).map_err(|e| anyhow!("Failed to open email file: {}", e))?;
+    use std::io::BufReader;
+    let file = File::open(path).map_err(|e| anyhow!("Failed to open email file: {}", e))?;
+    let mut buf_reader = BufReader::new(file);
     let mut contents = String::new();
-    file.read_to_string(&mut contents)
+    buf_reader
+        .read_to_string(&mut contents)
         .map_err(|e| anyhow!("Failed to read email contents: {}", e))?;
     Ok(contents)
 }
@@ -33,56 +36,71 @@ pub fn read_regex_config(path: &PathBuf) -> Result<RegexConfig> {
 }
 
 fn compile_regex_parts(parts: &[RegexPattern], input: &[u8]) -> Result<Vec<CompiledRegex>> {
-    let mut compiled_parts = Vec::new();
-
-    for part in parts.iter() {
-        let regex = match part {
+    parts
+        .iter()
+        .map(|part| match part {
             RegexPattern::Match { pattern } => {
-                let verify_re = Regex::new(pattern)?;
-                let re = CompiledRegex {
+                let verify_dfa_re = DFARegex::new(pattern)?;
+                if verify_dfa_re.find_iter(input).count() != 1 {
+                    return Err(anyhow!("Input doesn't match regex pattern: {:?}", part));
+                }
+
+                Ok(CompiledRegex {
                     verify_re: DFA {
-                        fwd: verify_re.forward().to_bytes_little_endian().0,
-                        bwd: verify_re.reverse().to_bytes_little_endian().0,
+                        fwd: verify_dfa_re.forward().to_bytes_little_endian().0,
+                        bwd: verify_dfa_re.reverse().to_bytes_little_endian().0,
                     },
-                    capture_re: None,
-                };
-                compiled_parts.push(re);
-                verify_re
+                    capture_str: None,
+                })
             }
             RegexPattern::Capture {
                 prefix,
                 capture,
                 suffix,
             } => {
-                let pattern = format!("{}{}{}", prefix, capture, suffix);
-                let verify_re = Regex::new(&pattern)?;
-                let capture_re = Regex::new(&capture)?;
-                let re = CompiledRegex {
-                    verify_re: DFA {
-                        fwd: verify_re.forward().to_bytes_little_endian().0,
-                        bwd: verify_re.reverse().to_bytes_little_endian().0,
-                    },
-                    capture_re: Some(DFA {
-                        fwd: capture_re.forward().to_bytes_little_endian().0,
-                        bwd: capture_re.reverse().to_bytes_little_endian().0,
-                    }),
-                };
-                compiled_parts.push(re);
-                verify_re
-            }
-        };
+                let pattern_dfa = format!("{}{}{}", prefix, capture, suffix);
+                let pattern_meta = format!("({})({})({})", prefix, capture, suffix);
 
-        let matches = regex.find_iter(input).collect::<Vec<_>>();
-        println!(
-            "matches: {:?}",
-            std::str::from_utf8(&input[matches[0].range()])
-        );
-        if matches.len() != 1 {
-            return Err(anyhow!("Input doesn't match regex pattern: {:?}", part));
-        }
+                let verify_dfa_re = DFARegex::new(&pattern_dfa)?;
+                if verify_dfa_re.find_iter(input).count() != 1 {
+                    return Err(anyhow!("Input doesn't match regex pattern: {:?}", part));
+                }
+
+                let verify_meta_re = MetaRegex::new(&pattern_meta)?;
+                let mut caps = verify_meta_re.create_captures();
+                verify_meta_re.captures(input, &mut caps);
+
+                let capture_str = caps
+                    .get_group(2)
+                    .and_then(|capture| std::str::from_utf8(&input[capture.range()]).ok())
+                    .map(String::from)
+                    .ok_or_else(|| anyhow!("No capture found"))?;
+
+                Ok(CompiledRegex {
+                    verify_re: DFA {
+                        fwd: verify_dfa_re.forward().to_bytes_little_endian().0,
+                        bwd: verify_dfa_re.reverse().to_bytes_little_endian().0,
+                    },
+                    capture_str: Some(capture_str),
+                })
+            }
+        })
+        .collect()
+}
+
+fn extract_email_body(email: &mailparse::ParsedMail) -> Result<Vec<u8>> {
+    if email.subparts.is_empty() {
+        return email.get_body_raw().map_err(Into::into);
     }
 
-    Ok(compiled_parts)
+    email
+        .subparts
+        .iter()
+        .find(|part| part.ctype.mimetype == "text/html")
+        .or_else(|| email.subparts.first())
+        .ok_or_else(|| anyhow!("No valid email body found"))?
+        .get_body_raw()
+        .map_err(Into::into)
 }
 
 pub async fn generate_email_inputs(from_domain: &str, email_path: &PathBuf) -> Result<Email> {
@@ -190,19 +208,7 @@ pub async fn generate_email_with_regex_inputs(
     let email = mailparse::parse_mail(&email_inputs.raw_email)?;
 
     let header_bytes = email.get_headers().get_raw_bytes();
-
-    let email_body = if email.subparts.is_empty() {
-        email.get_body_raw()?
-    } else {
-        let mut body = None;
-        for part in email.subparts.iter() {
-            if part.ctype.mimetype == "text/html" {
-                body = Some(part.get_body_raw()?);
-                break;
-            }
-        }
-        body.unwrap_or_else(|| email.subparts[0].get_body_raw().unwrap())
-    };
+    let email_body = extract_email_body(&email)?;
 
     let regex_config = read_regex_config(config_path)?;
     let body_parts = compile_regex_parts(&regex_config.body_parts, &email_body)?;
