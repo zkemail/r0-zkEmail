@@ -34,7 +34,7 @@ risc0_zkvm::guest::entry!(main);
 
 fn main() {
     let input: Vec<u8> = env::read_frame();
-    let input: Email = postcard::from_bytes(&input).unwrap();
+    let input: Email = borsh::from_slice::<Email>(&input).unwrap();
     let logger = Logger::root(Discard, o!());
 
     let verified = verify_dkim(&input, &logger);

@@ -85,7 +85,7 @@ risc0_zkvm::guest::entry!(main);
 
 fn main() {
     let input: Vec<u8> = env::read_frame();
-    let input: EmailWithRegex = postcard::from_bytes(&input).unwrap();
+    let input: EmailWithRegex = borsh::from_slice::<EmailWithRegex>(&input).unwrap();
 
     let logger = Logger::root(Discard, o!());
     let parsed_email = parse_mail(&input.email.raw_email).unwrap();

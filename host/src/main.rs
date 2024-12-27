@@ -1,10 +1,11 @@
 use anyhow::{anyhow, Ok, Result};
+use borsh::BorshSerialize;
 use log::{debug, info};
 use methods::{
     EMAIL_VERIFY_ELF, EMAIL_VERIFY_ID, EMAIL_WITH_REGEX_VERIFY_ELF, EMAIL_WITH_REGEX_VERIFY_ID,
 };
 use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 use std::{env, fmt::Debug, path::PathBuf};
 use zkemail_core::{
     generate_email_inputs, generate_email_with_regex_inputs, Email, EmailVerifierOutput,
@@ -23,12 +24,12 @@ fn generate_and_verify_proof<T, U>(
     verify_id: &[u32; 8],
 ) -> Result<U>
 where
-    T: Serialize,
+    T: BorshSerialize,
     U: DeserializeOwned + Debug,
 {
     debug!("Starting ZK proof generation");
 
-    let input = postcard::to_allocvec(&input_data).unwrap();
+    let input = borsh::to_vec(&input_data)?;
     let env = ExecutorEnv::builder()
         .write_frame(&input)
         .build()

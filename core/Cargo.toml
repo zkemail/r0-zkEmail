@@ -5,10 +5,11 @@ edition = "2021"
 
 [features]
 default = ["host"]
-host = ["serde", "cfdkim", "mailparse", "trust-dns-resolver", "slog", "anyhow", "log", "serde_json", "regex-automata"]
-zkvm = ["serde"]
+host = ["borsh", "serde", "cfdkim", "mailparse", "trust-dns-resolver", "slog", "anyhow", "log", "serde_json", "regex-automata"]
+zkvm = ["borsh", "serde"]
 
 [dependencies]
+borsh = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 cfdkim = { workspace = true, optional = true } 
 mailparse = { workspace = true, optional = true }
