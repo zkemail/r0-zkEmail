@@ -7,10 +7,8 @@ use methods::{
 use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
 use serde::de::DeserializeOwned;
 use std::{env, fmt::Debug, path::PathBuf};
-use zkemail_core::{
-    generate_email_inputs, generate_email_with_regex_inputs, Email, EmailVerifierOutput,
-    EmailWithRegex, EmailWithRegexVerifierOutput,
-};
+use zkemail_core::{Email, EmailVerifierOutput, EmailWithRegex, EmailWithRegexVerifierOutput};
+use zkemail_helpers::{generate_email_inputs, generate_email_with_regex_inputs};
 
 enum VerificationType {
     Signature,

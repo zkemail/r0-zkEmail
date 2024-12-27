@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["host", "methods", "core", "app"]
+members = ["host", "methods", "app"]
 
 [workspace.dependencies]
 boundless-market = "0.4"
@@ -30,9 +30,11 @@ tracing-subscriber = "0.3"
 trust-dns-resolver = "0.23.2"
 url = "2.5"
 
+zkemail-core = { git = "https://github.com/zkemail/zkemail.rs", branch = "feat/core-impl" }
+zkemail-helpers = { git = "https://github.com/zkemail/zkemail.rs", branch = "feat/core-impl" }
+
 host = { path = "./host" }
 methods = { path = "./methods" }
-zkemail-core = { path = "./core" }
 
 # Always optimize; building and running the guest takes much longer without optimization.
 [profile.dev]

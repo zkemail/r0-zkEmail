@@ -21,9 +21,8 @@ use std::{
     time::Duration,
 };
 use url::Url;
-use zkemail_core::{
-    generate_email_inputs, generate_email_with_regex_inputs, Email, EmailWithRegex,
-};
+use zkemail_core::{Email, EmailWithRegex};
+use zkemail_helpers::{generate_email_inputs, generate_email_with_regex_inputs};
 
 /// Timeout for the transaction to be confirmed.
 pub const TX_TIMEOUT: Duration = Duration::from_secs(30);
