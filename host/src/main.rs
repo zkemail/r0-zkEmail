@@ -8,7 +8,9 @@ use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
 use serde::de::DeserializeOwned;
 use std::{env, fmt::Debug, path::PathBuf};
 use zkemail_core::{Email, EmailVerifierOutput, EmailWithRegex, EmailWithRegexVerifierOutput};
-use zkemail_helpers::{generate_email_inputs, generate_email_with_regex_inputs, read_email_file};
+use zkemail_helpers::{
+    generate_email_inputs, generate_email_with_regex_inputs, read_email_file, read_regex_config,
+};
 
 enum VerificationType {
     Signature,
@@ -69,8 +71,9 @@ async fn verify_email(
         }
         VerificationType::SignatureWithRegex(config_path) => {
             let raw_email = read_email_file(email_path)?;
+            let regex_config = read_regex_config(&config_path)?;
             let email_with_regex_inputs =
-                generate_email_with_regex_inputs(from_domain, &raw_email, &config_path).await?;
+                generate_email_with_regex_inputs(from_domain, &raw_email, &regex_config).await?;
             generate_and_verify_proof::<EmailWithRegex, EmailWithRegexVerifierOutput>(
                 prover.as_ref(),
                 email_with_regex_inputs,

@@ -22,7 +22,9 @@ use std::{
 };
 use url::Url;
 use zkemail_core::{Email, EmailWithRegex};
-use zkemail_helpers::{generate_email_inputs, generate_email_with_regex_inputs, read_email_file};
+use zkemail_helpers::{
+    generate_email_inputs, generate_email_with_regex_inputs, read_email_file, read_regex_config,
+};
 
 /// Timeout for the transaction to be confirmed.
 pub const TX_TIMEOUT: Duration = Duration::from_secs(30);
@@ -111,8 +113,10 @@ async fn main() -> Result<()> {
     let input = match args.regex_config_path {
         Some(config) => {
             let raw_email = read_email_file(&args.email_path)?;
+            let regex_config = read_regex_config(&config)?;
             let email_with_regex_inputs =
-                generate_email_with_regex_inputs(&args.email_domain, &raw_email, &config).await?;
+                generate_email_with_regex_inputs(&args.email_domain, &raw_email, &regex_config)
+                    .await?;
             borsh::to_vec(&email_with_regex_inputs)?
         }
         None => {
