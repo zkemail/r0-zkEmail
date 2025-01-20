@@ -4,9 +4,9 @@ use log::{debug, info};
 use methods::{
     EMAIL_VERIFY_ELF, EMAIL_VERIFY_ID, EMAIL_WITH_REGEX_VERIFY_ELF, EMAIL_WITH_REGEX_VERIFY_ID,
 };
-use risc0_zkvm::{default_prover, ExecutorEnv, Prover};
+use risc0_zkvm::{default_prover, ExecutorEnv, Journal, Prover};
 use serde::de::DeserializeOwned;
-use std::{env, fmt::Debug, path::PathBuf};
+use std::{env, fmt::Debug, path::PathBuf, time::Instant};
 use zkemail_core::{Email, EmailVerifierOutput, EmailWithRegex, EmailWithRegexVerifierOutput};
 use zkemail_helpers::{
     generate_email_inputs, generate_email_with_regex_inputs, read_email_file, read_regex_config,
@@ -22,7 +22,7 @@ fn generate_and_verify_proof<T, U>(
     input_data: T,
     elf: &[u8],
     verify_id: &[u32; 8],
-) -> Result<U>
+) -> Result<Journal>
 where
     T: BorshSerialize,
     U: DeserializeOwned + Debug,
@@ -35,12 +35,15 @@ where
         .build()
         .map_err(|e| anyhow!("Failed to build environment: {}", e))?;
 
+    let start = Instant::now();
     let prove_info = prover
         .prove(env, elf)
         .map_err(|e| anyhow!("Failed to generate proof: {}", e))?;
+    let end = Instant::now();
+    println!("Time taken: {:?}", (end - start).as_secs_f64());
 
     let receipt = prove_info.receipt;
-    let output: U = receipt.journal.decode()?;
+    let output = receipt.journal.clone();
     println!("{:?}", output);
 
     receipt

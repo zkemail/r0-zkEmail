@@ -30,8 +30,8 @@ tracing-subscriber = "0.3"
 trust-dns-resolver = "0.23.2"
 url = "2.5"
 
-zkemail-core = { git = "https://github.com/zkemail/zkemail.rs", branch = "feat/core-impl" }
-zkemail-helpers = { git = "https://github.com/zkemail/zkemail.rs", branch = "feat/core-impl" }
+zkemail-core = { git = "https://github.com/zkemail/zkemail.rs" }
+zkemail-helpers = { git = "https://github.com/zkemail/zkemail.rs" }
 
 host = { path = "./host" }
 methods = { path = "./methods" }
