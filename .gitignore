@@ -14,4 +14,8 @@ target/
 *.pdb
 
 testdata/**
-/profile.pb
+**.pb
+
+.env
+cache
+build
